@@ -37,13 +37,8 @@ def best_bets():
 	logger.debug('Got {} team predictions from FiveThirtyEight'.format(len(daily_predictions)))
 	matchups = pair_teams([prediction.team for prediction in daily_predictions])
 	
-	for away, home in matchups:		
-		vegas.build_line_history(away, home, today)
-		# debugging below
-		total_lines_away = sum(len(l) for l in vegas.get_line_history_by_sportsbook(away).values())
-		total_lines_home = sum(len(l) for l in vegas.get_line_history_by_sportsbook(home).values())
-		logger.debug('Built a history of {} lines for {}'.format(total_lines_away, away))
-		logger.debug('Built a history of {} lines for {}'.format(total_lines_home, home))
+	vegas.build_line_history(matchups, today)
+	logger.debug('Built {} sportsbooks'.format(len(vegas.books)))
 	
 	lines = []
 	for team_prediction in daily_predictions:

@@ -12,34 +12,35 @@ class VegasInsider:
 					  'http://www.vegasinsider.com/mlb/odds/offshore/line-movement']
 		self.books = []
 		
-	def build_line_history(self, away, home, date):
+	def build_line_history(self, matchups, date):
 		day = str(date.day).zfill(2)
 		month = str(date.month).zfill(2)
 		year = str(date.year)[-2:]
-		away = away.replace(' ', '-')
-		home = home.replace(' ', '-')
 		
 		for page in self.bases:
-			site = '/{}-@-{}.cfm/date/{}-{}-{}'.format(away, home, month, day, year)
+			for away, home in matchups:
+				away = away.replace(' ', '-')
+				home = home.replace(' ', '-')
+				site = '/{}-@-{}.cfm/date/{}-{}-{}'.format(away, home, month, day, year)
 		
-			r = requests.get(page + site)
-			soup = BeautifulSoup(r.text, 'html.parser')
+				r = requests.get(page + site)
+				soup = BeautifulSoup(r.text, 'html.parser')
 		
-			bookie_tables = soup.find('div', {'SLTables1'}).find_all('table', recursive=False)[2:]
+				bookie_tables = soup.find('div', {'SLTables1'}).find_all('table', recursive=False)[2:]
 		
-			for bookie in bookie_tables:
-				name = bookie.find('tr', {'class':'component_head'}).text
-				name = clean_name(name)
-				if name == 'VI CONSENSUS':
-					continue  # this is not an actual sportsbook
+				for bookie in bookie_tables:
+					name = bookie.find('tr', {'class':'component_head'}).text
+					name = clean_name(name)
+					if name == 'VI CONSENSUS':
+						continue  # this is not an actual sportsbook
 			
-				sportsbook = self.find_sportsbook(name)
-				if sportsbook is None:
-					sportsbook = Sportsbook(name)
-					self.books.append(sportsbook)
+					sportsbook = self.find_sportsbook(name)
+					if sportsbook is None:
+						sportsbook = Sportsbook(name)
+						self.books.append(sportsbook)
 				
-				rows = bookie.find('table', {'class':'rt_railbox_border2'}).find_all('tr')[2:]
-				self.scrape_moneylines(rows, sportsbook)				
+					rows = bookie.find('table', {'class':'rt_railbox_border2'}).find_all('tr')[2:]
+					self.scrape_moneylines(rows, sportsbook)				
 			
 	def find_sportsbook(self, name):
 		for book in self.books:
