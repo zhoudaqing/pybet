@@ -16,7 +16,7 @@ class Line:
 			prob = abs(self.odds)/(abs(self.odds)+100)
 		else:
 			prob = 100/(self.odds+100)
-		return round(prob, 6)
+		return prob
 		
 	def __repr__(self):
 		return 'Line: {} at {}'.format(self.team, self.odds)
@@ -29,8 +29,7 @@ class Contest:
 	@property
 	def overround(self):
 		total_implied = sum(l.implied_probability for l in self.lines)
-		over = total_implied - 1
-		return round(over, 6)
+		return total_implied - 1
 
 	@property
 	def underdog(self):
@@ -57,10 +56,13 @@ class Sportsbook:
 		return self.line_history[name]
 		
 	def add_line(self, line):
-		self.line_history[line.team].append(line)
+		name = normalize_name(line.team)
+		self.line_history[name].append(line)
 		
 	def current_line(self, team):
 		hist = self.get_line_history(team)
+		if not hist:
+			return None
 		return hist[-1]
 	
 	

@@ -11,7 +11,8 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler())
 
 def get_best_line(team_prediction, bookies):
-	best_book = max(bookies, key=lambda b: team_prediction.win_pct / b.current_line(team_prediction.team).implied_probability - 1)
+	books_offering_lines = [b for b in bookies if b.current_line(team_prediction.team) is not None]
+	best_book = max(books_offering_lines, key=lambda b: team_prediction.win_pct / b.current_line(team_prediction.team).implied_probability - 1)
 	logger.debug('Best bookie for {} is {}'.format(team_prediction.team, best_book.name))
 	return (best_book, best_book.current_line(team_prediction.team))
 	
