@@ -1,10 +1,12 @@
 import re
+import logging
 
 import requests
 from bs4 import BeautifulSoup
 
 from ..bet import Sportsbook, Line
 
+logger = logging.getLogger(__name__)
 
 class VegasInsider:
 	def __init__(self):
@@ -38,6 +40,7 @@ class VegasInsider:
 					if sportsbook is None:
 						sportsbook = Sportsbook(name)
 						self.books.append(sportsbook)
+						logger.debug('Added {}'.format(name))
 				
 					rows = bookie.find('table', {'class':'rt_railbox_border2'}).find_all('tr')[2:]
 					self.scrape_moneylines(rows, sportsbook)				

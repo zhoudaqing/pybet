@@ -7,13 +7,12 @@ from pybet.bet import Contest
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-logger.addHandler(logging.StreamHandler())
 
 
 def get_best_line(team_prediction, bookies):
 	books_offering_lines = [b for b in bookies if b.current_line(team_prediction.team) is not None]
 	best_book = max(books_offering_lines, key=lambda b: team_prediction.win_pct / b.current_line(team_prediction.team).implied_probability - 1)
+	logger.debug('{} provides the best line for {}'.format(best_book.name, team_prediction.team))
 	return (best_book, best_book.current_line(team_prediction.team))
 	
 
@@ -23,6 +22,7 @@ def find_oppenent(team, matchups):
 		if team in l:
 			l.remove(team)
 			opp = l[0]
+			logger.debug('{}\'s opponent is {}'.format(team, opp))
 			return opp
 	raise RuntimeError('No opponent found for {}'.format(team))
 			
@@ -34,7 +34,6 @@ def best_bets(league=None, sportsbooks=None):
 	today = datetime.date.today()
 	
 	daily_predictions = model.scrape_daily_teams()
-	logger.debug('Got {} team predictions from FiveThirtyEight'.format(len(daily_predictions)))
 	matchups = pair_teams([prediction.team for prediction in daily_predictions])
 	
 	vegas.build_line_history(matchups, today)
@@ -43,9 +42,9 @@ def best_bets(league=None, sportsbooks=None):
 		books = vegas.books  # if no books are specified use all of them
 	else:
 		books = [vegas.find_sportsbook(b) for b in sportsbooks]  # otherwise get the Sportsbook object for each name
-		
-	logger.debug('Built {} sportsbooks'.format(len(books)))
 	
+	logger.debug('Looking for lines from {} sportsbooks'.format(len(books)))
+		
 	lines = []
 	for team_prediction in daily_predictions:
 		bookie_obj, line_obj = get_best_line(team_prediction, books)
@@ -53,7 +52,9 @@ def best_bets(league=None, sportsbooks=None):
 		opponent = find_oppenent(team_prediction.team, matchups)
 		opponent_line = bookie_obj.current_line(opponent)
 		match = Contest(line_obj, opponent_line)
-		lines.append((bookie_obj.name, line_obj, team_prediction.win_pct / implied - 1, match.overround))
+		value = team_prediction.win_pct / implied - 1
+		if value > 0:
+			lines.append((bookie_obj.name, line_obj, value, match.overround))
 	
 	lines.sort(key=lambda w : w[2], reverse=True)
 	

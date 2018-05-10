@@ -5,6 +5,8 @@ import requests
 from bs4 import BeautifulSoup
 
 
+logger = logging.getLogger(__name__)
+
 class BaseballModel:
 	def __init__(self):
 		self.url = 'https://projects.fivethirtyeight.com/2018-mlb-predictions/games/'
@@ -24,7 +26,7 @@ class BaseballModel:
 				break
 			else:
 				model_output.extend((away, home))
-		
+		logger.debug('Scraped {} baseball games from FiveThirtyEight'.format(len(model_output)))
 		return model_output
 						
 	def get_game_table(self):
