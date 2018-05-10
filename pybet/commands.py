@@ -10,10 +10,10 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler())
 
+
 def get_best_line(team_prediction, bookies):
 	books_offering_lines = [b for b in bookies if b.current_line(team_prediction.team) is not None]
 	best_book = max(books_offering_lines, key=lambda b: team_prediction.win_pct / b.current_line(team_prediction.team).implied_probability - 1)
-	logger.debug('Best bookie for {} is {}'.format(team_prediction.team, best_book.name))
 	return (best_book, best_book.current_line(team_prediction.team))
 	
 
@@ -23,12 +23,11 @@ def find_oppenent(team, matchups):
 		if team in l:
 			l.remove(team)
 			opp = l[0]
-			logger.debug('{}\'s opponent is {}'.format(team, opp))
 			return opp
 	raise RuntimeError('No opponent found for {}'.format(team))
 			
 	
-def best_bets():
+def best_bets(league=None, sportsbooks=None):
 	vegas = VegasInsider()
 	model = BaseballModel()
 	
@@ -39,11 +38,17 @@ def best_bets():
 	matchups = pair_teams([prediction.team for prediction in daily_predictions])
 	
 	vegas.build_line_history(matchups, today)
-	logger.debug('Built {} sportsbooks'.format(len(vegas.books)))
+	
+	if sportsbooks is None:
+		books = vegas.books  # if no books are specified use all of them
+	else:
+		books = [vegas.find_sportsbook(b) for b in sportsbooks]  # otherwise get the Sportsbook object for each name
+		
+	logger.debug('Built {} sportsbooks'.format(len(books)))
 	
 	lines = []
 	for team_prediction in daily_predictions:
-		bookie_obj, line_obj = get_best_line(team_prediction, vegas.books)
+		bookie_obj, line_obj = get_best_line(team_prediction, books)
 		implied = line_obj.implied_probability
 		opponent = find_oppenent(team_prediction.team, matchups)
 		opponent_line = bookie_obj.current_line(opponent)
