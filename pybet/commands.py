@@ -1,5 +1,6 @@
 import datetime
 import logging
+import sys
 
 from pybet.webscrapers.fivethirtyeight import BaseballModel, pair_teams
 from pybet.webscrapers.vegasinsider import VegasInsider
@@ -11,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 def get_best_line(team_prediction, bookies):
 	books_offering_lines = [b for b in bookies if b.current_line(team_prediction.team) is not None]
+	if not books_offering_lines:
+		return
 	best_book = max(books_offering_lines, key=lambda b: team_prediction.win_pct / b.current_line(team_prediction.team).implied_probability - 1)
 	logger.debug('{} provides the best line for {}'.format(best_book.name, team_prediction.team))
 	return (best_book, best_book.current_line(team_prediction.team))
@@ -47,7 +50,10 @@ def best_bets(league=None, sportsbooks=None):
 		
 	lines = []
 	for team_prediction in daily_predictions:
-		bookie_obj, line_obj = get_best_line(team_prediction, books)
+		best = get_best_line(team_prediction, books)
+		if not best:  # the current sportsbooks is not offering lines for the current team
+			continue
+		bookie_obj, line_obj = best
 		implied = line_obj.implied_probability
 		opponent = find_oppenent(team_prediction.team, matchups)
 		opponent_line = bookie_obj.current_line(opponent)
