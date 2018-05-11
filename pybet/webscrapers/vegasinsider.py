@@ -1,5 +1,6 @@
 import re
 import logging
+from difflib import SequenceMatcher
 
 import requests
 from bs4 import BeautifulSoup
@@ -36,8 +37,9 @@ class VegasInsider:
 					if name == 'VI CONSENSUS':
 						continue  # this is not an actual sportsbook
 			
-					sportsbook = self.find_sportsbook(name)
-					if sportsbook is None:
+					try:
+						sportsbook = self.find_sportsbook(name)
+					except KeyError:
 						sportsbook = Sportsbook(name)
 						self.books.append(sportsbook)
 						logger.debug('Added {}'.format(name))
@@ -49,6 +51,13 @@ class VegasInsider:
 		for book in self.books:
 			if name.lower() == book.name.lower():
 				return book
+		best_matches = self.get_best_matches(name)
+		if not best_matches:
+			msg = 'Could not find a sportsbooks with the name {}'.format(name)
+		else:
+			joined = ' or '.join(best_matches)
+			msg = 'Could not find a sportsbook with the name {}. Did you mean {}?'.format(name, joined)
+		raise KeyError(msg)
 				
 	def get_line_history_by_sportsbook(self, team, book_name=None):
 		if book_name is not None:
@@ -72,6 +81,14 @@ class VegasInsider:
 				odds = int(t[sign_pos:])
 				team = t[:sign_pos]
 				sportsbook.add_line(Line(team, odds))
+				
+	def get_best_matches(self, name):
+		matches = []
+		for book in self.books:
+			ratio = SequenceMatcher(None, book.name.lower(), name.lower()).ratio()
+			if ratio > .80:
+				matches.append(book.name)
+		return matches
 			
 			
 def clean_name(name):
