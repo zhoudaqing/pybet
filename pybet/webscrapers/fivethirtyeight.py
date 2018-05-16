@@ -1,5 +1,6 @@
 import datetime
 import logging
+import sys
 
 import requests
 from bs4 import BeautifulSoup
@@ -16,6 +17,7 @@ class BaseballModel:
 		team_rows = game_table.find_all('tr')
 		today = datetime.date.today()
 		today = '{}/{}'.format(today.month, today.day)
+		logger.debug('Looking for contests on {}'.format(today))
 		
 		model_output = []
 		for away_tag, home_tag in pair_teams(team_rows):
@@ -23,10 +25,14 @@ class BaseballModel:
 			home = ModelTeamPrediction(home_tag, date=away.date)
 
 			if today != away.date:
-				break
+				continue
 			else:
 				model_output.extend((away, home))
 		logger.debug('Scraped {} baseball games from FiveThirtyEight'.format(len(model_output)))
+		
+		if not model_output:
+			sys.exit('No contests were scraped from FiveThirtyEight. Try again later')
+			
 		return model_output
 						
 	def get_game_table(self):
