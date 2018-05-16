@@ -7,8 +7,11 @@ import pybet.commands as cmd
 def setup_logging():
 	root = logging.getLogger()
 	root.setLevel(logging.DEBUG)
-	root.addHandler(logging.StreamHandler())
-
+	handler = logging.StreamHandler()
+	formatter = logging.Formatter(fmt='%(levelname)s_%(name)s: %(message)s')
+	handler.setFormatter(formatter)
+	root.addHandler(handler)
+	
 	
 def main():
 	top_parser = argparse.ArgumentParser(prog='pybet')	
