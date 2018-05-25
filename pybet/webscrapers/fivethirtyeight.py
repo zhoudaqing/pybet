@@ -29,7 +29,7 @@ class BaseballModel:
             if today != away.date:
                 continue
             else:
-                model_output.extend((away, home))
+                model_output.append((away, home))
         logger.debug('Scraped {} baseball games from FiveThirtyEight'.format(len(model_output)))
         
         if not model_output:
@@ -61,7 +61,7 @@ class BasketballModel:
             hchance = float(home.find('td', {'class': 'td number chance'}).text.strip('%'))/100
             away = ModelTeamPrediction(team=aname, win_pct=achance, spread=aspread)
             home = ModelTeamPrediction(team=hname, win_pct=hchance, spread=hspread)
-            model_output.extend((away, home))
+            model_output.append((away, home))
         return model_output
     
     def get_todays_games(self):

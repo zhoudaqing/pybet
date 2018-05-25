@@ -33,12 +33,9 @@ def find_oppenent(team, matchups):
 def best_bets(league=None, sportsbooks=None):
     vegas = VegasInsider()
     model = BaseballModel()
-    
     today = datetime.date.today()
-    
     daily_predictions = model.scrape_daily_teams()
-    matchups = pair_teams([prediction.team for prediction in daily_predictions])
-    
+    matchups = [(a.team, h.team) for a,h in daily_predictions]
     vegas.build_line_history(matchups, today)
     
     if sportsbooks is None:
@@ -49,7 +46,7 @@ def best_bets(league=None, sportsbooks=None):
     logger.debug('Looking for lines from {} sportsbooks'.format(len(books)))
         
     lines = []
-    for team_prediction in daily_predictions:
+    for team_prediction in (t for p in daily_predictions for t in p):
         best = get_best_line(team_prediction, books)
         if not best:  # the current sportsbooks is not offering lines for the current team
             continue
