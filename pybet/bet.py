@@ -22,6 +22,12 @@ class Line:
         return 'Line: {} at {}'.format(self.team, self.odds)
         
         
+class PointSpread(Line):
+    def __init__(self, team, odds, spread):
+        super().__init__(team, odds)
+        self.spread = spread
+        
+        
 class Contest:
     def __init__(self, *lines):
         self.lines = lines
@@ -64,8 +70,8 @@ class Sportsbook:
         if not hist:
             return None
         return hist[-1]
-    
-    
+
+
 def normalize_name(name):
     for team in TEAMS:
         if name in team:
