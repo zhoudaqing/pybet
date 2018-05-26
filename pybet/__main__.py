@@ -6,7 +6,7 @@ import pybet.commands as cmd
 
 def setup_logging():
     root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
+    root.setLevel(logging.INFO)
     handler = logging.StreamHandler()
     formatter = logging.Formatter(fmt='%(levelname)s_%(name)s: %(message)s')
     handler.setFormatter(formatter)
@@ -35,4 +35,4 @@ def main():
     args = top_parser.parse_args()
     if args.verbose:
         setup_logging()
-    args.func(league=args.leagues, sportsbooks=args.books)
+    args.func(leagues=args.leagues, sportsbooks=args.books)

@@ -2,21 +2,22 @@ import datetime
 import logging
 import sys
 
-from pybet.webscrapers.fivethirtyeight import BaseballModel, pair_teams
 from pybet.webscrapers.vegasinsider import VegasInsider
-from pybet.bet import Contest
+from pybet.bet import overround
+from pybet.models import get_model
 
 
 logger = logging.getLogger(__name__)
 
 
-def get_best_line(team_prediction, bookies):
-    books_offering_lines = [b for b in bookies if b.current_line(team_prediction.team) is not None]
+def get_best_line(team_prediction, bookies, wager_type):
+    books_offering_lines = [b for b in bookies if b.current_line(team_prediction.team, wager_type) is not None]
+    logger.info('{} sportsbooks are offering {} wagers for {}'.format(len(books_offering_lines), wager_type, team_prediction.team.nickname))
     if not books_offering_lines:
         return
-    best_book = max(books_offering_lines, key=lambda b: team_prediction.win_pct / b.current_line(team_prediction.team).implied_probability - 1)
-    logger.debug('{} provides the best line for {}'.format(best_book.name, team_prediction.team))
-    return (best_book, best_book.current_line(team_prediction.team))
+    best_book = max(books_offering_lines, key=lambda b: b.current_line(team_prediction.team, wager_type).evaluate(team_prediction))
+    logger.info('{} provides the best line for {}'.format(best_book.name, team_prediction.team.nickname))
+    return (best_book, best_book.current_line(team_prediction.team, wager_type))
     
 
 def find_oppenent(team, matchups):
@@ -25,41 +26,49 @@ def find_oppenent(team, matchups):
         if team in l:
             l.remove(team)
             opp = l[0]
-            logger.debug('{}\'s opponent is {}'.format(team, opp))
+            logger.info('{}\'s opponent is {}'.format(team, opp))
             return opp
     raise RuntimeError('No opponent found for {}'.format(team))
             
     
-def best_bets(league=None, sportsbooks=None):
+def best_bets(leagues=None, sportsbooks=None, model='FiveThirtyEight', wager=None):
     vegas = VegasInsider()
-    model = BaseballModel()
-    today = datetime.date.today()
-    daily_predictions = model.scrape_daily_teams()
-    matchups = [(a.team, h.team) for a,h in daily_predictions]
-    vegas.build_line_history(matchups, today)
+    model = get_model(model)
     
-    if sportsbooks is None:
-        books = vegas.books  # if no books are specified use all of them
-    else:
-        books = [vegas.find_sportsbook(b) for b in sportsbooks]  # otherwise get the Sportsbook object for each name
+    if not leagues:
+        leagues = ['mlb', 'nba']
+
+    best_bets = []
+    for league in leagues:
+        daily_predictions = model.get_todays_predictions(league)
+        matchups = [(a.team, h.team) for a,h in daily_predictions]
+        vegas.build_line_history(matchups, league)
     
-    logger.debug('Looking for lines from {} sportsbooks'.format(len(books)))
+        if sportsbooks is None:
+            books = vegas.books  # if no books are specified use all of them
+        else:
+            books = [vegas.find_sportsbook(b) for b in sportsbooks]  # otherwise get the Sportsbook object for each name
+    
+        logger.info('Looking for lines from {} sportsbooks'.format(len(books)))
         
-    lines = []
-    for team_prediction in (t for p in daily_predictions for t in p):
-        best = get_best_line(team_prediction, books)
-        if not best:  # the current sportsbooks is not offering lines for the current team
-            continue
-        bookie_obj, line_obj = best
-        implied = line_obj.implied_probability
-        opponent = find_oppenent(team_prediction.team, matchups)
-        opponent_line = bookie_obj.current_line(opponent)
-        match = Contest(line_obj, opponent_line)
-        value = team_prediction.win_pct / implied - 1
-        if value > 0:
-            lines.append((bookie_obj.name, line_obj, value, match.overround))
+        flattened_teams = [t for p in daily_predictions for t in p]
+        logger.info('Evaluating {} total {} predictions from {}'.format(len(flattened_teams), league, model))
+        wagers = model.supported_wagers(league)
+        logger.info('{} supports {} predictions for wager types: {}'.format(model, league, ' and '.join(wagers)))
+        for team_prediction in flattened_teams:
+            for wager_type in wagers:
+                best = get_best_line(team_prediction, books, wager_type)
+                if not best:  # the current sportsbooks is not offering lines for the current team
+                    continue
+                bookie_obj, wager = best
+                opponent = find_oppenent(team_prediction.team, matchups)
+                opponent_line = bookie_obj.current_line(opponent, wager_type)
+                juice = overround(wager, opponent_line)
+                value = wager.evaluate(team_prediction)
+                if value > 0:
+                    best_bets.append((bookie_obj.name, wager, value, juice))
     
-    lines.sort(key=lambda w : w[2], reverse=True)
+    best_bets.sort(key=lambda w : w[2], reverse=True)
     
-    for bet in lines:
-        print('{} {} at {} with a value of {:.2f}% and house edge of {:.2f}%'.format(bet[0], bet[1].team, bet[1].odds, bet[2]*100, bet[3]*100))
+    for bet in best_bets:
+        print('{}: {} with a value of {:.2f}% and house edge of {:.2f}%'.format(bet[0], bet[1], bet[2]*100, bet[3]*100))

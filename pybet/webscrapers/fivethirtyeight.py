@@ -7,30 +7,37 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
+import pybet.leagues
+
 
 logger = logging.getLogger(__name__)
 
-class BaseballModel:
+
+class BaseballScraper:
     def __init__(self):
         self.url = 'https://projects.fivethirtyeight.com/2018-mlb-predictions/games/'
         
-    def scrape_daily_teams(self):
+    def scrape_todays_games(self):
         game_table = self.get_game_table()
         team_rows = game_table.find_all('tr')
         today = datetime.date.today()
         today = '{}/{}'.format(today.month, today.day)
-        logger.debug('Looking for contests on {}'.format(today))
+        logger.info('Looking for contests on {}'.format(today))
         
         model_output = []
         for away_tag, home_tag in pair_teams(team_rows):
-            away = ModelTeamPrediction(away_tag)
-            home = ModelTeamPrediction(home_tag, date=away.date)
+            aname = away_tag.find('span', {'class': 'team-name long'}).text
+            hname = home_tag.find('span', {'class': 'team-name long'}).text
+            ateam = pybet.leagues.find_team(aname, 'mlb')
+            hteam = pybet.leagues.find_team(hname, 'mlb')
+            away = ModelTeamPrediction(away_tag, team=ateam)
+            home = ModelTeamPrediction(home_tag, date=away.date, team=hteam)
 
             if today != away.date:
                 continue
             else:
                 model_output.append((away, home))
-        logger.debug('Scraped {} baseball games from FiveThirtyEight'.format(len(model_output)))
+        logger.info('Scraped {} baseball games from FiveThirtyEight'.format(len(model_output)))
         
         if not model_output:
             sys.exit('No contests were scraped from FiveThirtyEight. Try again later')
@@ -44,11 +51,11 @@ class BaseballModel:
         return div.find('tbody')
         
 
-class BasketballModel:
+class BasketballScraper:
     def __init__(self):
         self.url = 'https://projects.fivethirtyeight.com/2018-nba-predictions/games/'
         
-    def scrape_daily_teams(self):
+    def scrape_todays_games(self):
         todays_games = self.get_todays_games()
         team_rows = [row for table in todays_games.find_all('tbody', {'class': 'ie10up'}) 
                      for row in table.find_all(lambda tag: tag.name == 'tr' and tag.get('class') == ['tr'])]
@@ -56,12 +63,15 @@ class BasketballModel:
         for away, home in pair_teams(team_rows):
             aname = [c for c in away.find('td', {'class': 'team'}).children][0]
             hname = [c for c in home.find('td', {'class': 'team'}).children][0]
+            ateam = pybet.leagues.find_team(aname, 'nba')
+            hteam = pybet.leagues.find_team(hname, 'nba')
             aspread, hspread = self.parse_point_spread(away, home)
             achance = float(away.find('td', {'class': 'td number chance'}).text.strip('%'))/100
             hchance = float(home.find('td', {'class': 'td number chance'}).text.strip('%'))/100
-            away = ModelTeamPrediction(team=aname, win_pct=achance, spread=aspread)
-            home = ModelTeamPrediction(team=hname, win_pct=hchance, spread=hspread)
+            away = ModelTeamPrediction(team=ateam, win_pct=achance, spread=aspread)
+            home = ModelTeamPrediction(team=hteam, win_pct=hchance, spread=hspread)
             model_output.append((away, home))
+        logger.info('Scraped {} basketball games from FiveThirtyEight'.format(len(model_output)))
         return model_output
     
     def get_todays_games(self):
@@ -92,7 +102,7 @@ class BasketballModel:
         
         
 class ModelTeamPrediction:
-    def __init__(self, html=None, *, date=None, team=None, win_pct=None, spread=None):
+    def __init__(self, html=None, *, date=None, team=None, win_pct=None, spread=None, league=None):
         self.html = html
         self._date = date
         self._team = team
@@ -108,10 +118,7 @@ class ModelTeamPrediction:
 
     @property
     def team(self):
-        if self._team:
-            return self._team
-        elif self.html:
-            return self.html.find('span', {'class':'team-name long'}).text
+        return self._team
     
     @property
     def win_pct(self):
@@ -126,7 +133,7 @@ class ModelTeamPrediction:
         return self._spread
             
     def __repr__(self):
-        return 'FiveThirtyEight Prediction: {} - {:.0f}%'.format(self.team, self.win_pct*100)
+        return 'FiveThirtyEight Prediction: {} - {:.0f}%'.format(self.team.nickname, self.win_pct*100)
 
             
 def pair_teams(iterable):

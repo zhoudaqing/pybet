@@ -1,8 +1,10 @@
 from collections import defaultdict
+import logging
 
-from .leagues.mlb import TEAMS
+logger = logging.getLogger(__name__)
 
-class Line:
+
+class MoneyLine:
     def __init__(self, team, odds):
         self.team = team
         if odds == 'EVEN':
@@ -18,61 +20,61 @@ class Line:
             prob = 100/(self.odds+100)
         return prob
         
-    def __repr__(self):
-        return 'Line: {} at {}'.format(self.team, self.odds)
+    def evaluate(self, prediction):
+        return prediction.win_pct / self.implied_probability - 1
         
-        
-class PointSpread(Line):
+    def __str__(self):
+        return '{} ({}) MoneyLine at {}'.format(self.team.nickname, self.team.league, self.odds)
+
+    
+class Spread(MoneyLine):
     def __init__(self, team, odds, spread):
         super().__init__(team, odds)
         self.spread = spread
         
-        
-class Contest:
-    def __init__(self, *lines):
-        self.lines = lines
+    def evaluate(self, prediction):
+        if self.spread < 0:
+            return prediction.spread / self.spread - 1
+        else:
+            return self.spread / prediction.spread - 1
     
-    @property
-    def overround(self):
-        total_implied = sum(l.implied_probability for l in self.lines)
-        return total_implied - 1
+    def __str__(self):
+        return '{} ({}) against the spread ({}) at {}'.format(self.team.nickname, self.team.league, self.spread, self.odds)
 
-    @property
-    def underdog(self):
-        if all(self.lines[0].odds == l.odds for l in self.lines):
-            return None
-        favorite = max((l for l in self.lines), key=lambda l : l.odds)
-        return favorite.team
-        
-    @property
-    def favorite(self):
-        if all(self.lines[0].odds == l.odds for l in self.lines):
-            return None
-        dog = min((l for l in self.lines), key=lambda l : l.odds)
-        return dog.team
 
-        
 class Sportsbook:
     def __init__(self, name):
         self.name = name
-        self.line_history = defaultdict(list)
+        self.ats_history = defaultdict(list)
+        self.moneyline_history = defaultdict(list)
         
-    def get_line_history(self, team):
-        name = normalize_name(team)
-        return self.line_history[name]
+    def get_line_history(self, team, wager_type):
+        wager_type = wager_type.lower()
+        if wager_type == 'moneyline':
+            return self.moneyline_history[team]
+        elif wager_type in ('ats', 'spread', 'point spread', 'run line'):
+            return self.ats_history[team]
+        else:
+            raise TypeError('Unsupported wager type: {}'.format(wager_type))
         
-    def add_line(self, line):
-        name = normalize_name(line.team)
-        self.line_history[name].append(line)
+    def add_line(self, wager):
+        if type(wager) == Spread:
+            self.ats_history[wager.team].append(wager)
+            logger.info('Added spread wager for {}: ({}) to {}'.format(wager.team.nickname, id(wager.team), self.name))
+        elif type(wager) == MoneyLine:
+            self.moneyline_history[wager.team].append(wager)
+            logger.info('Added moneyline wager for {}: ({}) to {}'.format(wager.team.nickname, id(wager.team), self.name))
+        else:
+            raise TypeError('Unsupported wager type {}'.format(type(wager)))
         
-    def current_line(self, team):
-        hist = self.get_line_history(team)
+    def current_line(self, team, wager_type):
+        hist = self.get_line_history(team, wager_type)
         if not hist:
             return None
         return hist[-1]
 
+        
+def overround(*wagers):
+    total_implied = sum(bet.implied_probability for bet in wagers)
+    return total_implied - 1
 
-def normalize_name(name):
-    for team in TEAMS:
-        if name in team:
-            return team[0]
