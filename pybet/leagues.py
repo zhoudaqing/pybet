@@ -78,7 +78,7 @@ def _get_teams(league):
 def find_team(name, league):
     teams = _get_teams(league)
     for team in teams:
-        if name.lower() in [n.lower() for n in team.__dict__.values()]:
+        if name.lower() in [n.lower() for n in team._asdict().values()]:
             return team
     raise KeyError('Cannot find an {} team called {}'.format(league, name))
         
