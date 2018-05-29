@@ -37,11 +37,7 @@ class BaseballScraper:
                 continue
             else:
                 model_output.append((away, home))
-        logger.info('Scraped {} baseball games from FiveThirtyEight'.format(len(model_output)))
-        
-        if not model_output:
-            sys.exit('No contests were scraped from FiveThirtyEight. Try again later')
-            
+        logger.info('Scraped {} baseball games from FiveThirtyEight'.format(len(model_output)))            
         return model_output
                         
     def get_game_table(self):
@@ -57,6 +53,8 @@ class BasketballScraper:
         
     def scrape_todays_games(self):
         todays_games = self.get_todays_games()
+        if not todays_games:
+            return
         team_rows = [row for table in todays_games.find_all('tbody', {'class': 'ie10up'}) 
                      for row in table.find_all(lambda tag: tag.name == 'tr' and tag.get('class') == ['tr'])]
         model_output = []
@@ -83,7 +81,6 @@ class BasketballScraper:
         for day in day_tables:
             if re.search(today, day.next.text):
                 return day
-        sys.exit('No contests were scraped from FiveThirtyEight. Try again later')
         
     @staticmethod
     def parse_point_spread(away_tag, home_tag):

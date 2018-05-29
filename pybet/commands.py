@@ -41,6 +41,9 @@ def best_bets(leagues=None, sportsbooks=None, model='FiveThirtyEight', wager=Non
     best_bets = []
     for league in leagues:
         daily_predictions = model.get_todays_predictions(league)
+        if not daily_predictions:
+            logger.info('No {} contests were scraped from {}'.format(league, model.name))
+            continue
         matchups = [(a.team, h.team) for a,h in daily_predictions]
         vegas.build_line_history(matchups, league)
     

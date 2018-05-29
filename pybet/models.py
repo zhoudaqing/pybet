@@ -7,8 +7,9 @@ def get_model(name):
     
 
 class Model:
-    def __init__(self, scrapers):
+    def __init__(self, scrapers, name):
         self.scrapers = scrapers
+        self.name = name
         
     def get_todays_predictions(self, league):
         raise NotImplementedError
@@ -30,7 +31,7 @@ class FiveThirtyEight(Model):
         scrapers = {'mlb': fivethirtyeight.BaseballScraper,
                     'nba': fivethirtyeight.BasketballScraper}
         
-        super().__init__(scrapers=scrapers)
+        super().__init__(name='FiveThirtyEight', scrapers=scrapers)
         
     def get_todays_predictions(self, league):
         scraper = super().get_scraper(league)
