@@ -18,41 +18,57 @@ class BaseballScraper:
         self.url = 'https://projects.fivethirtyeight.com/2018-mlb-predictions/games/'
         
     def scrape_todays_games(self):
-        game_table = self.get_game_table()
+        game_table = self._get_game_table()
         team_rows = game_table.find_all('tr')
-        today = datetime.date.today()
-        today = '{}/{}'.format(today.month, today.day)
-        logger.info('Looking for contests on {}'.format(today))
         
         model_output = []
         for away_tag, home_tag in pair_teams(team_rows):
-            aname = away_tag.find('span', {'class': 'team-name long'}).text
-            hname = home_tag.find('span', {'class': 'team-name long'}).text
-            ateam = pybet.leagues.find_team(aname, 'mlb')
-            hteam = pybet.leagues.find_team(hname, 'mlb')
-            away = ModelTeamPrediction(away_tag, team=ateam)
-            home = ModelTeamPrediction(home_tag, date=away.date, team=hteam)
-
-            if today != away.date:
+            preds = self._parse_team_predictions(away_tag, home_tag)
+            if not preds:
                 continue
             else:
-                model_output.append((away, home))
+                model_output.append(preds)
+            
         logger.info('Scraped {} baseball games from FiveThirtyEight'.format(len(model_output)))            
         return model_output
                         
-    def get_game_table(self):
+    def _get_game_table(self):
         r = requests.get(self.url)
         soup = BeautifulSoup(r.text, 'html.parser')
         div = soup.find('div', {'class':'games'})
         return div.find('tbody')
+    
+    @staticmethod
+    def _parse_team_predictions(atag, htag):
+        ''' parse away team first since the date from this HTML tag will be needed
+        with the home team prediction '''
+        today = datetime.date.today()
+        today = '{}/{}'.format(today.month, today.day)
         
+        aname = atag.find('span', {'class': 'team-name long'}).text
+        dt = atag.find('span', {'class':'day short'}).text
+        ateam = pybet.leagues.find_team(aname, 'mlb')
+        win_pct = atag.find('td', {'class':'td number td-number win-prob'}).text
+        win_pct = float(win_pct.strip('%'))/100
+        away = ModelTeamPrediction(date=dt, team=ateam, win_pct=win_pct)
+        
+        if today != dt:
+            return
+        
+        hname = htag.find('span', {'class': 'team-name long'}).text
+        hteam = pybet.leagues.find_team(hname, 'mlb')
+        win_pct = htag.find('td', {'class':'td number td-number win-prob'}).text
+        win_pct = float(win_pct.strip('%'))/100
+        home = ModelTeamPrediction(date=dt, team=hteam, win_pct=win_pct)
+        return away, home
+
 
 class BasketballScraper:
     def __init__(self):
         self.url = 'https://projects.fivethirtyeight.com/2018-nba-predictions/games/'
         
     def scrape_todays_games(self):
-        todays_games = self.get_todays_games()
+        todays_games = self._get_todays_games()
         if not todays_games:
             return
         team_rows = [row for table in todays_games.find_all('tbody', {'class': 'ie10up'}) 
@@ -63,7 +79,7 @@ class BasketballScraper:
             hname = [c for c in home.find('td', {'class': 'team'}).children][0]
             ateam = pybet.leagues.find_team(aname, 'nba')
             hteam = pybet.leagues.find_team(hname, 'nba')
-            aspread, hspread = self.parse_point_spread(away, home)
+            aspread, hspread = self._parse_point_spread(away, home)
             achance = float(away.find('td', {'class': 'td number chance'}).text.strip('%'))/100
             hchance = float(home.find('td', {'class': 'td number chance'}).text.strip('%'))/100
             away = ModelTeamPrediction(team=ateam, win_pct=achance, spread=aspread)
@@ -72,7 +88,7 @@ class BasketballScraper:
         logger.info('Scraped {} basketball games from FiveThirtyEight'.format(len(model_output)))
         return model_output
     
-    def get_todays_games(self):
+    def _get_todays_games(self):
         today = datetime.date.today()
         today = re.compile(r'{}\.? {}'.format(calendar.month_abbr[today.month], today.day))
         r = requests.get(self.url)
@@ -83,7 +99,7 @@ class BasketballScraper:
                 return day
         
     @staticmethod
-    def parse_point_spread(away_tag, home_tag):
+    def _parse_point_spread(away_tag, home_tag):
         aspread = away_tag.find('td', {'class': 'td number spread'}).text
         hspread = home_tag.find('td', {'class': 'td number spread'}).text
         if aspread == 'PK' or hspread == 'PK':
@@ -99,8 +115,7 @@ class BasketballScraper:
         
         
 class ModelTeamPrediction:
-    def __init__(self, html=None, *, date=None, team=None, win_pct=None, spread=None, league=None):
-        self.html = html
+    def __init__(self, date, team, win_pct, spread=None):
         self._date = date
         self._team = team
         self._win_pct = win_pct
@@ -108,10 +123,7 @@ class ModelTeamPrediction:
         
     @property
     def date(self):
-        if self._date:
-            return self._date
-        elif self.html:
-            return self.html.find('span', {'class':'day short'}).text
+        return self._date
 
     @property
     def team(self):
@@ -119,11 +131,7 @@ class ModelTeamPrediction:
     
     @property
     def win_pct(self):
-        if self._win_pct:
-            return self._win_pct
-        elif self.html:
-            prob = self.html.find('td', {'class':'td number td-number win-prob'}).text
-            return round(float(prob.strip('%'))/100, 4)
+        return round(self._win_pct, 4)
     
     @property
     def spread(self):
