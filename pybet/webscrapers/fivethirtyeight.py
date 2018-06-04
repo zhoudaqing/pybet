@@ -90,7 +90,7 @@ class BasketballScraper:
     
     def _get_todays_games(self):
         today = datetime.date.today()
-        today = re.compile(r'{}\.? {}'.format(calendar.month_abbr[today.month], today.day))
+        today = re.compile(r'{}|{}\.? {}'.format(calendar.month_abbr[today.month], today.month, today.day))  # match October or just Oct.
         r = requests.get(self.url)
         soup = BeautifulSoup(r.text, 'html.parser')
         day_tables = soup.find_all('section', {'class': 'day upcoming week-ahead'})
@@ -115,7 +115,7 @@ class BasketballScraper:
         
         
 class ModelTeamPrediction:
-    def __init__(self, date, team, win_pct, spread=None):
+    def __init__(self, team, win_pct, spread=None, date=None):
         self._date = date
         self._team = team
         self._win_pct = win_pct
