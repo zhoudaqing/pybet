@@ -68,10 +68,12 @@ def best_bets(leagues=None, sportsbooks=None, model='FiveThirtyEight', wager=Non
                 opponent_line = bookie_obj.current_line(opponent, team_prediction.date, wager_type)
                 juice = overround(wager, opponent_line)
                 value = wager.evaluate(team_prediction)
+                start = team_prediction.date.time()
                 if value > 0:
-                    best_bets.append((bookie_obj.name, wager, value, juice))
+                    best_bets.append((bookie_obj.name, wager, value, juice, start))
     
     best_bets.sort(key=lambda w : w[2], reverse=True)
     
     for bet in best_bets:
-        print('{}: {} with a value of {:.2f}% and house edge of {:.2f}%'.format(bet[0], bet[1], bet[2]*100, bet[3]*100))
+        time = '{}:{}'.format(bet[4].hour, str(bet[4].minute).zfill(2))
+        print('{}: {} @ {} with a value of {:.2f}% and house edge of {:.2f}%'.format(bet[0], bet[1], time, bet[2]*100, bet[3]*100))
