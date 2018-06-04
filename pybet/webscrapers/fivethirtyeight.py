@@ -6,6 +6,7 @@ import re
 
 import requests
 from bs4 import BeautifulSoup
+from dateutil import parser
 
 import pybet.leagues
 
@@ -43,23 +44,28 @@ class BaseballScraper:
         ''' parse away team first since the date from this HTML tag will be needed
         with the home team prediction '''
         today = datetime.date.today()
-        today = '{}/{}'.format(today.month, today.day)
-        
         aname = atag.find('span', {'class': 'team-name long'}).text
-        dt = atag.find('span', {'class':'day short'}).text
+        dt_str = atag.find('span', {'class':'day long'}).text
+        dt = parser.parse(dt_str).date()
+        tm_str = atag.find('span', {'class': 'time'}).text
+        i = tm_str.find('.m.')
+        tm_str = tm_str[:i+3]  # remove timezone text if present
+        tm = parser.parse(tm_str).time()
+        dtime = datetime.datetime.combine(dt, tm)
         ateam = pybet.leagues.find_team(aname, 'mlb')
         win_pct = atag.find('td', {'class':'td number td-number win-prob'}).text
         win_pct = float(win_pct.strip('%'))/100
-        away = ModelTeamPrediction(date=dt, team=ateam, win_pct=win_pct)
         
         if today != dt:
             return
+
+        away = ModelTeamPrediction(date=dtime, team=ateam, win_pct=win_pct)
         
         hname = htag.find('span', {'class': 'team-name long'}).text
         hteam = pybet.leagues.find_team(hname, 'mlb')
         win_pct = htag.find('td', {'class':'td number td-number win-prob'}).text
         win_pct = float(win_pct.strip('%'))/100
-        home = ModelTeamPrediction(date=dt, team=hteam, win_pct=win_pct)
+        home = ModelTeamPrediction(date=dtime, team=hteam, win_pct=win_pct)
         return away, home
 
 
@@ -90,12 +96,14 @@ class BasketballScraper:
     
     def _get_todays_games(self):
         today = datetime.date.today()
-        today = re.compile(r'(?:{}|{}\.?) {}'.format(calendar.month_abbr[today.month], today.month, today.day))  # match October 13 or just Oct. 13
         r = requests.get(self.url)
         soup = BeautifulSoup(r.text, 'html.parser')
         day_tables = soup.find_all('section', {'class': 'day upcoming week-ahead'})
         for day in day_tables:
-            if re.search(today, day.next.text):
+            date_tag = day.find('h3')
+            for child in date_tag.find_all('span'):
+                child.decompose()
+            if parser.parse(date_tag.text).date() == today:
                 return day
         
     @staticmethod

@@ -5,7 +5,7 @@ setup(
     name='pybet',
     version='0.2',
     packages=find_packages(),
-    install_requires=['requests', 'bs4'],
+    install_requires=['requests', 'bs4', 'python-dateutil'],
     entry_points={
         'console_scripts': ['pybet=pybet.__main__:main']
     })
