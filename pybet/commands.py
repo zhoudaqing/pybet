@@ -16,7 +16,7 @@ def find_oppenent(team, matchups):
         if team in pairing:
             pairing.remove(team)
             opp = pairing[0]
-            logger.info('{}\'s opponent is {}'.format(team, opp))
+            logger.debug('{}\'s opponent is {}'.format(team.nickname, opp.nickname))
             return opp
     raise RuntimeError('No opponent found for {}'.format(team))
             
