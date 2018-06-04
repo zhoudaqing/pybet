@@ -21,11 +21,11 @@ def get_best_line(team_prediction, bookies, wager_type):
     
 
 def find_oppenent(team, matchups):
-    for pairing in matchups:
-        l = list(pairing)
-        if team in l:
-            l.remove(team)
-            opp = l[0]
+    for matchup in matchups:
+        pairing = [matchup['away'], matchup['home']]
+        if team in pairing:
+            pairing.remove(team)
+            opp = pairing[0]
             logger.info('{}\'s opponent is {}'.format(team, opp))
             return opp
     raise RuntimeError('No opponent found for {}'.format(team))
@@ -44,7 +44,7 @@ def best_bets(leagues=None, sportsbooks=None, model='FiveThirtyEight', wager=Non
         if not daily_predictions:
             logger.info('No {} contests were scraped from {}'.format(league, model.name))
             continue
-        matchups = [(a.team, h.team) for a,h in daily_predictions]
+        matchups = [dict(away=a.team, home=h.team, start=a.date) for a,h in daily_predictions]
         vegas.build_line_history(matchups, league)
     
         if sportsbooks is None:

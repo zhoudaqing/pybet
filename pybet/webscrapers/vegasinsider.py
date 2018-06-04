@@ -28,12 +28,13 @@ class VegasInsider:
         
         for page in self.bases:
             page = page.format(league)
-            for away, home in matchups:
-                away = away.nickname.replace(' ', '-')
-                home = home.nickname.replace(' ', '-')
-                site = '/{}-@-{}.cfm/date/{}-{}-{}'.format(away, home, month, day, year)
+            for matchup in matchups:
+                away = matchup['away'].nickname.replace(' ', '-')
+                home = matchup['home'].nickname.replace(' ', '-')
+                time = matchup['start'].time()
+                site = '/{}-@-{}.cfm/date/{}-{}-{}/time/{}{}'.format(away, home, month, day, year, time.hour, str(time.minute).zfill(2))
         
-                logger.info('Retrieving line history for {} @ {}'.format(away, home))
+                logger.info('Retrieving line history for {} @ {}'.format(matchup['away'].nickname, matchup['home'].nickname))
                 r = requests.get(page + site)
                 soup = BeautifulSoup(r.text, 'html.parser')
         
