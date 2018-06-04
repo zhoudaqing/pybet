@@ -54,8 +54,11 @@ class VegasInsider:
                         logger.info('Added {}'.format(name))
                 
                     rows = bookie.find('table', {'class':'rt_railbox_border2'}).find_all('tr')[2:]
-                    self._scrape_moneylines(rows, sportsbook)
-                    self._scrape_spreads(rows, sportsbook)
+                    for line in self._scrape_moneylines(rows):
+                        sportsbook.add_line(line, matchup['start'])
+                        
+                    for line in self._scrape_spreads(rows):
+                        sportsbook.add_line(line, matchup['start'])
             
     def find_sportsbook(self, name):
         for book in self.books:
@@ -69,7 +72,7 @@ class VegasInsider:
             msg = 'Could not find a sportsbook with the name {}. Did you mean {}?'.format(name, joined)
         raise KeyError(msg)
                           
-    def _scrape_moneylines(self, html_table, sportsbook):
+    def _scrape_moneylines(self, html_table):
         for row in html_table:
             for t in row.find_all('td')[2:4]:
                 t = clean_name(t.text)
@@ -77,9 +80,9 @@ class VegasInsider:
                 if not parsed:
                     continue
                 team, odds = parsed
-                sportsbook.add_line(MoneyLine(team, odds))
+                yield MoneyLine(team, odds)
                 
-    def _scrape_spreads(self, html_table, sportsbook):
+    def _scrape_spreads(self, html_table):
         for row in html_table:
             for t in row.find_all('td')[4:6]:
                 ''' TODO: FIGURE OUT CLEANER WAY TO HANDLE MLB RUNLINES '''
@@ -90,7 +93,7 @@ class VegasInsider:
                     ats = self._parse_runline(t)
                     if not ats:
                         continue
-                    sportsbook.add_line(ats)
+                    yield ats
                 else:    
                     s = t.split(' ')
                     team = s[0][:3]
@@ -101,7 +104,7 @@ class VegasInsider:
                         logger.info('Skipping {} because {}'.format(t, e))
                         continue
                     spread = float(s[0][3:])
-                    sportsbook.add_line(Spread(team, odds, spread))
+                    yield Spread(team, odds, spread)
                 
     def _parse_name_and_odds(self, table_data):
         sign_pos = re.search(r'\+|-', table_data)

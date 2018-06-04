@@ -48,27 +48,27 @@ class Sportsbook:
         self.ats_history = defaultdict(list)
         self.moneyline_history = defaultdict(list)
         
-    def get_line_history(self, team, wager_type):
+    def get_line_history(self, team, date, wager_type):
         wager_type = wager_type.lower()
         if wager_type == 'moneyline':
-            return self.moneyline_history[team]
+            return self.moneyline_history[(team, date)]
         elif wager_type in ('ats', 'spread', 'point spread', 'run line'):
-            return self.ats_history[team]
+            return self.ats_history[(team, date)]
         else:
             raise TypeError('Unsupported wager type: {}'.format(wager_type))
         
-    def add_line(self, wager):
+    def add_line(self, wager, date):
         if type(wager) == Spread:
-            self.ats_history[wager.team].append(wager)
+            self.ats_history[(wager.team, date)].append(wager)
             logger.info('Added spread wager for {}: ({}) to {}'.format(wager.team.nickname, id(wager.team), self.name))
         elif type(wager) == MoneyLine:
-            self.moneyline_history[wager.team].append(wager)
+            self.moneyline_history[(wager.team, date)].append(wager)
             logger.info('Added moneyline wager for {}: ({}) to {}'.format(wager.team.nickname, id(wager.team), self.name))
         else:
             raise TypeError('Unsupported wager type {}'.format(type(wager)))
         
-    def current_line(self, team, wager_type):
-        hist = self.get_line_history(team, wager_type)
+    def current_line(self, team, date, wager_type):
+        hist = self.get_line_history(team, date, wager_type)
         if not hist:
             return None
         return hist[-1]

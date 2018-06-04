@@ -11,13 +11,13 @@ logger = logging.getLogger(__name__)
 
 
 def get_best_line(team_prediction, bookies, wager_type):
-    books_offering_lines = [b for b in bookies if b.current_line(team_prediction.team, wager_type) is not None]
+    books_offering_lines = [b for b in bookies if b.current_line(team_prediction.team, team_prediction.date, wager_type) is not None]
     logger.info('{} sportsbooks are offering {} wagers for {}'.format(len(books_offering_lines), wager_type, team_prediction.team.nickname))
     if not books_offering_lines:
         return
-    best_book = max(books_offering_lines, key=lambda b: b.current_line(team_prediction.team, wager_type).evaluate(team_prediction))
+    best_book = max(books_offering_lines, key=lambda b: b.current_line(team_prediction.team, team_prediction.date, wager_type).evaluate(team_prediction))
     logger.info('{} provides the best line for {}'.format(best_book.name, team_prediction.team.nickname))
-    return (best_book, best_book.current_line(team_prediction.team, wager_type))
+    return (best_book, best_book.current_line(team_prediction.team, team_prediction.date, wager_type))
     
 
 def find_oppenent(team, matchups):
@@ -65,7 +65,7 @@ def best_bets(leagues=None, sportsbooks=None, model='FiveThirtyEight', wager=Non
                     continue
                 bookie_obj, wager = best
                 opponent = find_oppenent(team_prediction.team, matchups)
-                opponent_line = bookie_obj.current_line(opponent, wager_type)
+                opponent_line = bookie_obj.current_line(opponent, team_prediction.date, wager_type)
                 juice = overround(wager, opponent_line)
                 value = wager.evaluate(team_prediction)
                 if value > 0:
