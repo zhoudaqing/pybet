@@ -90,7 +90,7 @@ class BasketballScraper:
     
     def _get_todays_games(self):
         today = datetime.date.today()
-        today = re.compile(r'{}|{}\.? {}'.format(calendar.month_abbr[today.month], today.month, today.day))  # match October or just Oct.
+        today = re.compile(r'(?:{}|{}\.?) {}'.format(calendar.month_abbr[today.month], today.month, today.day))  # match October 13 or just Oct. 13
         r = requests.get(self.url)
         soup = BeautifulSoup(r.text, 'html.parser')
         day_tables = soup.find_all('section', {'class': 'day upcoming week-ahead'})
