@@ -60,10 +60,10 @@ class Sportsbook:
     def add_line(self, wager, date):
         if type(wager) == Spread:
             self.ats_history[(wager.team, date)].append(wager)
-            logger.info('Added spread wager for {}: ({}) to {}'.format(wager.team.nickname, id(wager.team), self.name))
+            logger.debug('Added spread wager for {}: ({}) to {}'.format(wager.team.nickname, id(wager.team), self.name))
         elif type(wager) == MoneyLine:
             self.moneyline_history[(wager.team, date)].append(wager)
-            logger.info('Added moneyline wager for {}: ({}) to {}'.format(wager.team.nickname, id(wager.team), self.name))
+            logger.debug('Added moneyline wager for {}: ({}) to {}'.format(wager.team.nickname, id(wager.team), self.name))
         else:
             raise TypeError('Unsupported wager type {}'.format(type(wager)))
         

@@ -10,16 +10,6 @@ from pybet.models import get_model
 logger = logging.getLogger(__name__)
 
 
-def get_best_line(team_prediction, bookies, wager_type):
-    books_offering_lines = [b for b in bookies if b.current_line(team_prediction.team, team_prediction.date, wager_type) is not None]
-    logger.info('{} sportsbooks are offering {} wagers for {}'.format(len(books_offering_lines), wager_type, team_prediction.team.nickname))
-    if not books_offering_lines:
-        return
-    best_book = max(books_offering_lines, key=lambda b: b.current_line(team_prediction.team, team_prediction.date, wager_type).evaluate(team_prediction))
-    logger.info('{} provides the best line for {}'.format(best_book.name, team_prediction.team.nickname))
-    return (best_book, best_book.current_line(team_prediction.team, team_prediction.date, wager_type))
-    
-
 def find_oppenent(team, matchups):
     for matchup in matchups:
         pairing = [matchup['away'], matchup['home']]
@@ -46,21 +36,13 @@ def best_bets(leagues=None, sportsbooks=None, model='FiveThirtyEight', wager=Non
             continue
         matchups = [dict(away=a.team, home=h.team, start=a.date) for a,h in daily_predictions]
         vegas.build_line_history(matchups, league)
-    
-        if sportsbooks is None:
-            books = vegas.books  # if no books are specified use all of them
-        else:
-            books = [vegas.find_sportsbook(b) for b in sportsbooks]  # otherwise get the Sportsbook object for each name
-    
-        logger.info('Looking for lines from {} sportsbooks'.format(len(books)))
-        
         flattened_teams = [t for p in daily_predictions for t in p]
         logger.info('Evaluating {} total {} predictions from {}'.format(len(flattened_teams), league, model))
         wagers = model.supported_wagers(league)
         logger.info('{} supports {} predictions for wager types: {}'.format(model, league, ' and '.join(wagers)))
         for team_prediction in flattened_teams:
             for wager_type in wagers:
-                best = get_best_line(team_prediction, books, wager_type)
+                best = vegas.best_bet(team_prediction, wager_type, sportsbooks)
                 if not best:  # the current sportsbooks is not offering lines for the current team
                     continue
                 bookie_obj, wager = best
