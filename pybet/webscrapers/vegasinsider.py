@@ -24,17 +24,19 @@ class VegasInsider:
             sportsbooks = self.books
         else:
             sportsbooks = [self.find_sportsbook(s) for s in sportsbooks]
-        logger.info('Looking for best bets from the following books: {}'.format(', '.join([s.name for s in sportsbooks])))
+        logger.info('Looking for {} best bets from the following books: {}'.format(team_prediction.team.nickname,
+                                                                                   ', '.join([s.name for s in sportsbooks])))
         books_offering = []
         for book in sportsbooks:
             curr = book.current_line(team_prediction.team, team_prediction.date, wager_type)
             if not curr:
+                logger.info('{} is not currently offering a line for {}'.format(book.name, team_prediction.team.nickname))
                 continue
             else:
                 books_offering.append((book, curr))
-        best = max(books_offering, key=lambda b: b[1].evaluate(team_prediction))
-        if not best:
+        if not books_offering:
             return
+        best = max(books_offering, key=lambda b: b[1].evaluate(team_prediction))
         book, line = best
         logger.info('{} offers the best {} odds for {}'.format(book.name, wager_type, team_prediction.team.nickname))
         return book, line

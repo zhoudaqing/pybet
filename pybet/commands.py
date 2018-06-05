@@ -43,7 +43,7 @@ def best_bets(leagues=None, sportsbooks=None, model='FiveThirtyEight', wager=Non
         for team_prediction in flattened_teams:
             for wager_type in wagers:
                 best = vegas.best_bet(team_prediction, wager_type, sportsbooks)
-                if not best:  # the current sportsbooks is not offering lines for the current team
+                if not best:  # no sportsbooks are offering lines for this team
                     continue
                 bookie_obj, wager = best
                 opponent = find_oppenent(team_prediction.team, matchups)
