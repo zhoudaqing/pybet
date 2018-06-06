@@ -3,6 +3,7 @@ import logging
 import sys
 import calendar
 import re
+import datetime
 
 import requests
 from bs4 import BeautifulSoup
@@ -77,20 +78,26 @@ class BasketballScraper:
         todays_games = self._get_todays_games()
         if not todays_games:
             return
-        team_rows = [row for table in todays_games.find_all('tbody', {'class': 'ie10up'}) 
-                     for row in table.find_all(lambda tag: tag.name == 'tr' and tag.get('class') == ['tr'])]
+        
         model_output = []
-        for away, home in pair_teams(team_rows):
-            aname = [c for c in away.find('td', {'class': 'team'}).children][0]
-            hname = [c for c in home.find('td', {'class': 'team'}).children][0]
-            ateam = pybet.leagues.find_team(aname, 'nba')
-            hteam = pybet.leagues.find_team(hname, 'nba')
-            aspread, hspread = self._parse_point_spread(away, home)
-            achance = float(away.find('td', {'class': 'td number chance'}).text.strip('%'))/100
-            hchance = float(home.find('td', {'class': 'td number chance'}).text.strip('%'))/100
-            away = ModelTeamPrediction(team=ateam, win_pct=achance, spread=aspread)
-            home = ModelTeamPrediction(team=hteam, win_pct=hchance, spread=hspread)
-            model_output.append((away, home))
+        today = datetime.date.today()
+        for game in todays_games:
+            team_rows = [row for table in game.find_all('tbody', {'class': 'ie10up'}) 
+                         for row in table.find_all(lambda tag: tag.name == 'tr' and tag.get('class') == ['tr'])]  # avoids classes like "tr buffer"
+            game_time = game.find('span', {'class':'desk'}).next.next
+            game_time = parser.parse(game_time).time()
+            for away, home in pair_teams(team_rows):
+                dtime = datetime.datetime.combine(today, game_time)
+                aname = [c for c in away.find('td', {'class': 'team'}).children][0]
+                hname = [c for c in home.find('td', {'class': 'team'}).children][0]
+                ateam = pybet.leagues.find_team(aname, 'nba')
+                hteam = pybet.leagues.find_team(hname, 'nba')
+                aspread, hspread = self._parse_point_spread(away, home)
+                achance = float(away.find('td', {'class': 'td number chance'}).text.strip('%'))/100
+                hchance = float(home.find('td', {'class': 'td number chance'}).text.strip('%'))/100
+                away = ModelTeamPrediction(team=ateam, win_pct=achance, spread=aspread, date=dtime)
+                home = ModelTeamPrediction(team=hteam, win_pct=hchance, spread=hspread, date=dtime)
+                model_output.append((away, home))
         logger.info('Scraped {} basketball games from FiveThirtyEight'.format(len(model_output)))
         return model_output
     
@@ -104,7 +111,7 @@ class BasketballScraper:
             for child in date_tag.find_all('span'):
                 child.decompose()
             if parser.parse(date_tag.text).date() == today:
-                return day
+                return day.find_all('table', {'class': 'pre'})
         
     @staticmethod
     def _parse_point_spread(away_tag, home_tag):
