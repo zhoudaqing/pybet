@@ -118,7 +118,7 @@ class BasketballScraper:
             aspread = abs(hspread)
         else:
             aspread = float(aspread)
-            hspread = abs(hspread)
+            hspread = abs(aspread)
         return aspread, hspread
         
         
