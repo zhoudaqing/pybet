@@ -35,7 +35,7 @@ MLB_TEAMS = [
             Team('CIN', 'Cincinnati', 'Reds', 'mlb'),
             Team('SDG', 'San Diego', 'Padres', 'mlb')
         ]
-        
+
 NBA_TEAMS = [
             Team('ATL', 'Atlanta', 'Hawks', 'nba'),
             Team('BKN', 'Brooklyn', 'Nets', 'nba'),
@@ -69,6 +69,7 @@ NBA_TEAMS = [
             Team('WAS', 'Washington', 'Wizards', 'nba')
             ]
 
+
 def _get_teams(league):
     TEAMS = {'mlb': MLB_TEAMS,
              'nba': NBA_TEAMS}
@@ -81,4 +82,3 @@ def find_team(name, league):
         if name.lower() in [n.lower() for n in team._asdict().values()]:
             return team
     raise KeyError('Cannot find an {} team called {}'.format(league, name))
-        
